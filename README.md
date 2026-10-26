@@ -2,7 +2,7 @@
 
 Browser-only generator for realistic **WhatsApp**, **iMessage/SMS**, **Instagram post**, **X post** and **lock-screen notification** mockups. One state object drives a live HTML/CSS phone preview (390×844, scaled to fit) and a dedicated canvas renderer that rasterises the same state to PNG at real 2x screenshot size (780×1688, or 836×1744 with the bezel).
 
-**Live:** https://__SITE_URL__/ (placeholder – replace after deploy)
+**Live:** https://mockuplab-tool.vercel.app/ (placeholder – replace after deploy)
 
 > Mockups are for creative, educational and parody use. Don't use them to deceive. The disclaimer is shown under the tool and repeated in `terms.html`.
 
@@ -55,7 +55,7 @@ No build step.
 Deploy the folder as a static site on Vercel (`vercel --prod`). After the first deploy, replace the placeholder URL everywhere:
 
 ```bash
-sed -i 's/__SITE_URL__/mockuplab-tool.vercel.app/g' index.html privacy.html terms.html robots.txt sitemap.xml config.js README.md
+sed -i 's/mockuplab-tool.vercel.app/mockuplab-tool.vercel.app/g' index.html privacy.html terms.html robots.txt sitemap.xml config.js README.md
 ```
 
 ## Monetization setup
