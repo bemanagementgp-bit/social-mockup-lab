@@ -113,7 +113,7 @@
   };
   function palette(t, d) {
     const p = Object.assign({}, PAL[t][d.dark ? 'dark' : 'light'] || PAL[t].light);
-    if (t === 'whatsapp') p.wall = d.wallpaper || WA_WALLS.light;
+    if (t === 'whatsapp') p.wall = (COLOR_RE.test(String(d.wallpaper || '')) && d.wallpaper) || WA_WALLS.light;
     if (t === 'imessage') p.sentBg = d.style === 'sms' ? p.green : p.blue;
     if (t === 'notify') { const g = GRADS[d.gradient] || GRADS[0]; p.wall = `linear-gradient(160deg,${g[0]},${g[1]})`; }
     return p;
@@ -121,10 +121,41 @@
 
   // ---- state ----
   const clone = o => JSON.parse(JSON.stringify(o));
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  // Only image data/blob URLs are ever used as <img src> (state comes from localStorage = untrusted).
+  const safeImg = src => (typeof src === 'string' && /^(data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+|blob:[^"'<>\s]+)$/i.test(src)) ? src : '';
+  const COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|[a-z]{3,20})$/i;
+  const ENUM = { side: ['received', 'sent'], ticks: ['sent', 'delivered', 'read'], style: ['imessage', 'sms'] };
+  // Rebuilds one mockup's data from the defaults: unknown keys dropped, types enforced, strings capped.
+  function sanitizeType(t, data) {
+    const base = clone(DEFAULTS[t]);
+    if (!data || typeof data !== 'object') return base;
+    Object.keys(base).forEach(k => {
+      if (!own(data, k)) return;
+      const dv = base[k], v = data[k];
+      if (dv === null) base[k] = safeImg(v) || null; // avatar / image
+      else if (Array.isArray(dv)) {
+        if (!Array.isArray(v)) return;
+        const tpl = dv[0] || {};
+        base[k] = v.filter(it => it && typeof it === 'object').slice(0, 60).map(it => {
+          const o = {};
+          Object.keys(tpl).forEach(f => { o[f] = String(own(it, f) && it[f] != null ? it[f] : tpl[f]).slice(0, 2000); if (ENUM[f] && !ENUM[f].includes(o[f])) o[f] = tpl[f]; });
+          if (own(o, 'color') && !/^#[0-9a-f]{6}$/i.test(o.color)) o.color = tpl.color;
+          return o;
+        });
+      } else if (typeof dv === 'number') { const n = Number(v); if (isFinite(n) && n >= 0) base[k] = Math.min(n, 1e12); }
+      else if (typeof dv === 'boolean') base[k] = !!v;
+      else if (typeof dv === 'string' && (typeof v === 'string' || typeof v === 'number')) base[k] = String(v).slice(0, 4000);
+    });
+    if (own(base, 'gradient')) base.gradient = Math.min(GRADS.length - 1, Math.max(0, Math.floor(base.gradient) || 0));
+    if (own(base, 'style') && !ENUM.style.includes(base.style)) base.style = DEFAULTS[t].style;
+    if (own(base, 'wallpaper') && !COLOR_RE.test(base.wallpaper)) base.wallpaper = DEFAULTS[t].wallpaper;
+    return base;
+  }
   function loadState() {
     const saved = S.restore(KEY, {});
     const st = { type: TYPES.includes(saved.type) ? saved.type : 'whatsapp', frame: saved.frame !== false };
-    TYPES.forEach(t => { st[t] = Object.assign({}, clone(DEFAULTS[t]), saved[t] || {}); });
+    TYPES.forEach(t => { st[t] = sanitizeType(t, saved[t]); });
     return st;
   }
   let state = loadState();
@@ -159,7 +190,7 @@
   }
   function avatarHTML(name, src, size, style) {
     const abs = style ? ' abs' : '';
-    if (src) return `<img class="av${abs}" src="${src}" width="${size}" height="${size}" alt="" style="width:${size}px;height:${size}px;${style || ''}">`;
+    if (safeImg(src)) return `<img class="av${abs}" src="${esc(safeImg(src))}" width="${size}" height="${size}" alt="" style="width:${size}px;height:${size}px;${style || ''}">`;
     return `<span class="av${abs}" style="width:${size}px;height:${size}px;background:${nameColor(name)};font-size:${Math.round(size * 0.4)}px;${style || ''}">${esc(initials(name))}</span>`;
   }
   const IMG = {};
@@ -262,7 +293,7 @@
 
   TPL.instagram = (d, p) => {
     const g = GRADS[d.gradient] || GRADS[0];
-    const img = d.image ? `<img src="${d.image}" alt="">` : '';
+    const img = safeImg(d.image) ? `<img src="${esc(safeImg(d.image))}" alt="">` : '';
     const cap = `<p class="ig-cap"><b>${esc(d.username)}</b> ${esc(d.caption)}</p>`;
     const coms = d.comments.map(c => `<p class="ig-com"><b>${esc(c.user)}</b> ${esc(c.text)}</p>`).join('');
     const viewAll = d.comCount > 0 ? `<p class="ig-viewall">View all ${num(d.comCount).toLocaleString('en-US')} comments</p>` : '';
@@ -278,8 +309,9 @@
 
   function xImgH(d) { const im = imgFor(d.image); if (!loaded(im)) return 220; return Math.round(Math.max(180, Math.min(400, 358 * im.naturalHeight / im.naturalWidth))); }
   TPL.x = (d, p) => {
-    const text = esc(d.text).replace(linkRe, '<span class="x-link">$1</span>');
-    const img = d.image ? `<div class="x-img" style="height:${xImgH(d)}px"><img src="${d.image}" alt=""></div>` : '';
+    // Split on links/tags first, then escape each piece (escaping first would let '#' match inside '&#39;').
+    const text = String(d.text == null ? '' : d.text).split(linkRe).map((part, i) => i % 2 ? `<span class="x-link">${esc(part)}</span>` : esc(part)).join('');
+    const img = safeImg(d.image) ? `<div class="x-img" style="height:${xImgH(d)}px"><img src="${esc(safeImg(d.image))}" alt=""></div>` : '';
     const act = (n, v) => `<div class="x-act">${svgIcon(n, 20, p.sub)}${v != null ? `<span>${fmtK(v)}</span>` : ''}</div>`;
     return statusHTML(p.sb, '9:41') +
       `<div class="x-head">${icAt('chevL', 26, p.text, 10, 12)}<div class="t">Post</div></div>` +
@@ -290,7 +322,7 @@
   };
 
   TPL.notify = (d, p) => {
-    const cards = d.items.slice(0, 4).map(it => `<div class="nt-card"><div class="nt-icon" style="background:${esc(it.color)}">${esc(it.emoji)}</div><div class="nt-row"><div class="nt-title">${esc(it.title)}</div><div class="nt-when">${esc(it.time)}</div></div><div class="nt-body">${esc(it.body)}</div></div>`).join('');
+    const cards = d.items.slice(0, 4).map(it => `<div class="nt-card"><div class="nt-icon" style="background:${/^#[0-9a-f]{6}$/i.test(it.color) ? it.color : '#888888'}">${esc(it.emoji)}</div><div class="nt-row"><div class="nt-title">${esc(it.title)}</div><div class="nt-when">${esc(it.time)}</div></div><div class="nt-body">${esc(it.body)}</div></div>`).join('');
     return statusHTML(p.sb, '') + icAt('lock', 20, '#fff', 185, 66) +
       `<div class="nt-date">${esc(d.date)}</div><div class="nt-time">${esc(d.clock)}</div><div class="nt-list">${cards}</div>` +
       `<div class="nt-btn" style="left:31px">${icAt('flash', 22, '#fff', 14, 14)}</div><div class="nt-btn" style="right:31px">${icAt('camera', 22, '#fff', 14, 14)}</div>` + homeHTML();
@@ -722,6 +754,7 @@
     $(btnId).addEventListener('click', () => input.click());
     input.addEventListener('change', async () => {
       const f = input.files[0]; input.value = ''; if (!f) return;
+      if (f.size > 50 * 1024 * 1024) { toast('Could not read that image'); return; }
       try {
         const img = await S.readImage(f); const src = shrink(img, maxSide, 0.85);
         state[type][prop] = src; imgFor(src).addEventListener('load', renderPreview, { once: true });
@@ -735,23 +768,28 @@
     $('imAvPrev').innerHTML = avatarHTML(state.imessage.name, state.imessage.avatar, 36);
     $('igAvPrev').innerHTML = avatarHTML(state.instagram.username, state.instagram.avatar, 36);
     $('xAvPrev').innerHTML = avatarHTML(state.x.name, state.x.avatar, 36);
-    $('igImgPrev').innerHTML = state.instagram.image ? `<img src="${state.instagram.image}" alt="">` : 'none';
-    $('xImgPrev').innerHTML = state.x.image ? `<img src="${state.x.image}" alt="">` : 'none';
+    $('igImgPrev').innerHTML = safeImg(state.instagram.image) ? `<img src="${esc(safeImg(state.instagram.image))}" alt="">` : 'none';
+    $('xImgPrev').innerHTML = safeImg(state.x.image) ? `<img src="${esc(safeImg(state.x.image))}" alt="">` : 'none';
   }
 
   // =====================================================================
   // Saved mockups
   // =====================================================================
-  function getSaves() { try { return JSON.parse(localStorage.getItem(SAVES_KEY) || '[]'); } catch (e) { return []; } }
+  function getSaves() {
+    const v = S.safeParse(localStorage.getItem(SAVES_KEY) || '[]', []);
+    if (!Array.isArray(v)) return [];
+    return v.filter(s => s && typeof s === 'object' && TYPES.includes(s.type)).slice(0, 500)
+      .map(s => ({ id: Number(s.id) || 0, name: String(s.name == null ? '' : s.name).slice(0, 80), type: s.type, data: sanitizeType(s.type, s.data), at: Number(s.at) || 0 }));
+  }
   function renderSaves() {
     const saves = getSaves();
-    $('saveList').innerHTML = saves.map(s => `<div class="save-item" data-id="${s.id}"><span class="nm">${esc(s.name)} <small>· ${LABELS[s.type] || s.type}</small></span><button type="button" class="btn btn-sm" data-act="load">Load</button><button type="button" class="tb danger" data-act="del" aria-label="Delete saved mockup">✕</button></div>`).join('');
+    $('saveList').innerHTML = saves.map(s => `<div class="save-item" data-id="${esc(s.id)}"><span class="nm">${esc(s.name)} <small>· ${esc(LABELS[s.type] || s.type)}</small></span><button type="button" class="btn btn-sm" data-act="load">Load</button><button type="button" class="tb danger" data-act="del" aria-label="Delete saved mockup">✕</button></div>`).join('');
     $('saveHint').textContent = isPro() ? `${saves.length} saved · unlimited with Pro` : `${saves.length}/1 free slot · Pro saves unlimited mockups`;
   }
   function saveMockup() {
     const saves = getSaves();
     if (!isPro() && saves.length >= 1) { openPro('saves'); return; }
-    const name = $('saveName').value.trim() || `${LABELS[state.type]} ${new Date().toLocaleDateString()}`;
+    const name = $('saveName').value.trim().slice(0, 80) || `${LABELS[state.type]} ${new Date().toLocaleDateString()}`;
     saves.unshift({ id: Date.now(), name, type: state.type, data: clone(state[state.type]), at: Date.now() });
     try { localStorage.setItem(SAVES_KEY, JSON.stringify(saves)); } catch (e) { toast('Storage is full – remove an image or a saved mockup'); return; }
     $('saveName').value = ''; renderSaves(); track('save', { type: state.type }); toast('Mockup saved');
@@ -762,7 +800,7 @@
     $('saveList').addEventListener('click', e => {
       const btn = e.target.closest('button[data-act]'); if (!btn) return;
       const id = +btn.closest('[data-id]').dataset.id; let saves = getSaves(); const s = saves.find(x => x.id === id); if (!s) return;
-      if (btn.dataset.act === 'load') { state.type = s.type; state[s.type] = Object.assign({}, clone(DEFAULTS[s.type]), s.data); setType(s.type); fillFields(); update(); toast('Loaded "' + s.name + '"'); }
+      if (btn.dataset.act === 'load') { state.type = s.type; state[s.type] = sanitizeType(s.type, s.data); setType(s.type); fillFields(); update(); toast('Loaded "' + s.name + '"'); }
       else { saves = saves.filter(x => x.id !== id); localStorage.setItem(SAVES_KEY, JSON.stringify(saves)); renderSaves(); }
     });
   }
