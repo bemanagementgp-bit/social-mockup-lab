@@ -47,44 +47,52 @@
   };
 
   // ---- defaults ----
+  // Generic placeholder content (no invented people, brands or numbers), localized via <html lang>.
+  const SAMPLE_TXT = {
+    en: { name: 'Name', contact: 'Contact', online: 'online', today: 'Today', msg: 'Message', reply: 'Reply', text: 'Your text here', comment: 'Comment', now: 'now', notif: 'Notification text', messages: 'Messages', calendar: 'Calendar' },
+    es: { name: 'Nombre', contact: 'Contacto', online: 'en línea', today: 'Hoy', msg: 'Mensaje', reply: 'Respuesta', text: 'Tu texto acá', comment: 'Comentario', now: 'ahora', notif: 'Texto de la notificación', messages: 'Mensajes', calendar: 'Calendario' },
+    pt: { name: 'Nome', contact: 'Contato', online: 'online', today: 'Hoje', msg: 'Mensagem', reply: 'Resposta', text: 'Seu texto aqui', comment: 'Comentário', now: 'agora', notif: 'Texto da notificação', messages: 'Mensagens', calendar: 'Calendário' },
+    fr: { name: 'Nom', contact: 'Contact', online: 'en ligne', today: "Aujourd'hui", msg: 'Message', reply: 'Réponse', text: 'Ton texte ici', comment: 'Commentaire', now: 'maintenant', notif: 'Texte de la notification', messages: 'Messages', calendar: 'Calendrier' },
+    de: { name: 'Name', contact: 'Kontakt', online: 'online', today: 'Heute', msg: 'Nachricht', reply: 'Antwort', text: 'Dein Text hier', comment: 'Kommentar', now: 'jetzt', notif: 'Text der Mitteilung', messages: 'Nachrichten', calendar: 'Kalender' },
+    it: { name: 'Nome', contact: 'Contatto', online: 'online', today: 'Oggi', msg: 'Messaggio', reply: 'Risposta', text: 'Il tuo testo qui', comment: 'Commento', now: 'ora', notif: 'Testo della notifica', messages: 'Messaggi', calendar: 'Calendario' }
+  };
+  const SL = SAMPLE_TXT[(document.documentElement.lang || 'en').slice(0, 2)] || SAMPLE_TXT.en;
   const DEFAULTS = {
     whatsapp: {
-      name: 'Sofia Reyes', status: 'online', avatar: null, dark: false, wallpaper: WA_WALLS.light, doodle: true, date: 'Today',
+      name: SL.name, status: SL.online, avatar: null, dark: false, wallpaper: WA_WALLS.light, doodle: true, date: SL.today,
       messages: [
-        { side: 'received', text: 'Hey! Did you see the brief for the campaign? 🚀', time: '10:21', ticks: 'read' },
-        { side: 'sent', text: 'Yes!! Just finished the first mockups', time: '10:22', ticks: 'read' },
-        { side: 'received', text: 'No way, already? Send them over 👀', time: '10:22', ticks: 'read' },
-        { side: 'sent', text: 'Uploading now. Give me 2 min', time: '10:23', ticks: 'read' },
-        { side: 'received', text: "You're a legend 🙌", time: '10:24', ticks: 'read' },
-        { side: 'sent', text: 'Lunch later to go through feedback?', time: '10:24', ticks: 'delivered' }
+        { side: 'received', text: SL.msg, time: '9:41', ticks: 'read' },
+        { side: 'sent', text: SL.reply, time: '9:41', ticks: 'read' },
+        { side: 'received', text: SL.msg, time: '9:42', ticks: 'read' },
+        { side: 'sent', text: SL.reply, time: '9:42', ticks: 'delivered' }
       ]
     },
     imessage: {
-      name: 'Mom', avatar: null, dark: false, style: 'imessage', delivered: true, date: 'Today 9:41',
+      name: SL.contact, avatar: null, dark: false, style: 'imessage', delivered: true, date: SL.today + ' 9:41',
       messages: [
-        { side: 'received', text: 'Are you coming for dinner on Sunday?' },
-        { side: 'sent', text: 'Of course! Should I bring dessert? 🍰' },
-        { side: 'received', text: 'Yes please. Your brother is coming too' },
-        { side: 'sent', text: 'Perfect, see you at 7' }
+        { side: 'received', text: SL.msg },
+        { side: 'sent', text: SL.reply },
+        { side: 'received', text: SL.msg },
+        { side: 'sent', text: SL.reply }
       ]
     },
     instagram: {
-      username: 'wanderlust.ana', verified: true, avatar: null, image: null, gradient: 0, likes: 2481,
-      caption: 'Golden hour in Lisbon never disappoints 🌅 Three days here and I already want to move. #lisbon #travelgram #goldenhour',
-      comCount: 48, comments: [{ user: 'marco.travels', text: 'This light is unreal 😍' }, { user: 'julia_k', text: 'Take me with you next time!!' }],
-      time: '2 hours ago', dark: false
+      username: 'username', verified: true, avatar: null, image: null, gradient: 0, likes: 0,
+      caption: SL.text,
+      comCount: 0, comments: [{ user: 'username', text: SL.comment }],
+      time: SL.today, dark: false
     },
     x: {
-      name: 'Lena Park', handle: '@lenabuilds', verified: true, avatar: null, image: null,
-      text: 'Shipped the new onboarding flow today. 3 weeks of work, 40% fewer drop-offs in the first test. Small team, big wins 🚀 #buildinpublic',
-      time: '10:24 AM · Oct 26, 2026', replies: 48, reposts: 212, likes: 1830, views: 96400, dark: false
+      name: SL.name, handle: '@username', verified: true, avatar: null, image: null,
+      text: SL.text,
+      time: '9:41 · ' + SL.today, replies: 0, reposts: 0, likes: 0, views: 0, dark: false
     },
     notify: {
-      clock: '9:41', date: 'Monday, October 26', gradient: 1,
+      clock: '9:41', date: SL.today, gradient: 1,
       items: [
-        { app: 'Messages', emoji: '💬', color: '#34c759', title: 'Sofia Reyes', body: 'Mockups look amazing! Can we call at 3?', time: 'now' },
-        { app: 'Instagram', emoji: '📸', color: '#e1306c', title: 'Instagram', body: 'wanderlust.ana and 12 others liked your photo.', time: '5m ago' },
-        { app: 'Calendar', emoji: '📅', color: '#ff3b30', title: 'Design review', body: 'In 15 minutes · Meeting room B', time: '9m ago' }
+        { app: SL.messages, emoji: SL.messages[0], color: '#34c759', title: SL.messages, body: SL.notif, time: SL.now },
+        { app: 'Instagram', emoji: 'I', color: '#e1306c', title: 'Instagram', body: SL.notif, time: SL.now },
+        { app: SL.calendar, emoji: SL.calendar[0], color: '#ff3b30', title: SL.calendar, body: SL.notif, time: SL.now }
       ]
     }
   };
@@ -727,10 +735,10 @@
         renderList(type); update();
       });
     });
-    $('waAdd').addEventListener('click', () => { const a = state.whatsapp.messages; const last = a[a.length - 1]; a.push({ side: last && last.side === 'sent' ? 'received' : 'sent', text: 'New message', time: last ? last.time : '10:25', ticks: 'read' }); renderList('whatsapp'); update(); focusLast('waMsgs'); });
-    $('imAdd').addEventListener('click', () => { const a = state.imessage.messages; const last = a[a.length - 1]; a.push({ side: last && last.side === 'sent' ? 'received' : 'sent', text: 'New message' }); renderList('imessage'); update(); focusLast('imMsgs'); });
-    $('igComAdd').addEventListener('click', () => { const a = state.instagram.comments; if (a.length >= 3) { toast('Keep it to 3 comments so the post fits the screen'); return; } a.push({ user: 'friend_' + (a.length + 1), text: 'Love this!' }); renderList('instagram'); update(); });
-    $('ntAdd').addEventListener('click', () => { const a = state.notify.items; if (a.length >= 4) { toast('Up to 4 notifications fit the lock screen'); return; } a.push({ app: 'Mail', emoji: '✉️', color: '#0a84ff', title: 'New email', body: 'Your weekly summary is ready.', time: 'now' }); renderList('notify'); update(); });
+    $('waAdd').addEventListener('click', () => { const a = state.whatsapp.messages; const last = a[a.length - 1]; a.push({ side: last && last.side === 'sent' ? 'received' : 'sent', text: last && last.side === 'sent' ? SL.msg : SL.reply, time: last ? last.time : '9:41', ticks: 'read' }); renderList('whatsapp'); update(); focusLast('waMsgs'); });
+    $('imAdd').addEventListener('click', () => { const a = state.imessage.messages; const last = a[a.length - 1]; a.push({ side: last && last.side === 'sent' ? 'received' : 'sent', text: last && last.side === 'sent' ? SL.msg : SL.reply }); renderList('imessage'); update(); focusLast('imMsgs'); });
+    $('igComAdd').addEventListener('click', () => { const a = state.instagram.comments; if (a.length >= 3) { toast('Keep it to 3 comments so the post fits the screen'); return; } a.push({ user: 'username', text: SL.comment }); renderList('instagram'); update(); });
+    $('ntAdd').addEventListener('click', () => { const a = state.notify.items; if (a.length >= 4) { toast('Up to 4 notifications fit the lock screen'); return; } a.push({ app: 'App', emoji: 'A', color: '#0a84ff', title: 'App', body: SL.notif, time: SL.now }); renderList('notify'); update(); });
   }
   function focusLast(listId) { const tas = $(listId).querySelectorAll('textarea'); const ta = tas[tas.length - 1]; if (ta) { ta.focus(); ta.select(); } }
   // --- tiles & swatches ---
